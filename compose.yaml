@@ -1,0 +1,13 @@
+services:
+  rag:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      RAG_DATA_DIR: /app/runtime
+      RAG_EMBEDDING: ${RAG_EMBEDDING:-tfidf}
+      RAG_GENERATOR: ${RAG_GENERATOR:-extractive}
+      RAG_BASE_URL: ${RAG_BASE_URL:-https://your-provider.example/v1}
+      RAG_API_KEY: ${RAG_API_KEY:-}
+      RAG_CHAT_MODEL: ${RAG_CHAT_MODEL:-your-chat-model}
+      RAG_VLM_MODEL: ${RAG_VLM_MODEL:-}
+    volumes: ["./runtime:/app/runtime"]

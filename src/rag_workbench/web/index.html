@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>多模态知识库 · RAG Workbench</title>
+<style>
+:root{font-family:system-ui,"Microsoft YaHei",sans-serif;color:#26334a;background:#f3f5f9}
+*{box-sizing:border-box}body{margin:0}header{background:#122138;color:white;padding:26px 6%;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:24px;margin:0 0 7px}header p{margin:0;color:#b7c8df;font-size:14px}
+main{max-width:1350px;margin:26px auto;padding:0 24px;display:grid;grid-template-columns:340px 1fr;gap:22px}
+.panel{background:white;border:1px solid #e1e6ef;border-radius:14px;padding:22px}h2{font-size:17px;margin:0 0 18px}
+button{background:#3669d7;border:0;color:white;border-radius:7px;padding:10px 14px;cursor:pointer}button:disabled{opacity:.5}
+.secondary{background:#eef2f9;color:#355484}.danger{background:#fff0f0;color:#ad3535;padding:6px 10px;font-size:12px}
+input,textarea{border:1px solid #d2dbe9;border-radius:8px;padding:11px;width:100%;font:inherit}
+label{font-size:13px;color:#71809a;display:block;margin-bottom:8px}.row{display:flex;gap:8px;margin:12px 0}.row input{min-width:0}
+.doc{border-top:1px solid #edf0f5;padding:15px 0}.doc strong{font-size:14px}.muted{color:#7a879c;font-size:12px;line-height:1.7}
+.tag{display:inline-block;padding:5px 9px;border-radius:5px;background:#edf3ff;color:#4164a1;font-size:12px;margin:5px}
+#answer{white-space:pre-wrap;line-height:1.8;font-size:14px;min-height:150px;background:#f8faff;padding:20px;border-radius:8px}
+.evidence{padding:14px;border:1px solid #dde6f5;margin:12px 0;border-radius:8px}.evidence p{white-space:pre-wrap;font-size:13px;line-height:1.7}
+.evidence img{max-width:100%;max-height:250px}.evidence a{color:#3669d7}.status{font-size:13px;padding:10px 0;white-space:pre-wrap}
+pre{font-size:12px;white-space:pre-wrap;background:#122138;color:#dce7f9;border-radius:8px;padding:15px;overflow:auto}
+@media(max-width:850px){main{grid-template-columns:1fr}header{display:block}}
+</style>
+</head>
+<body>
+<header><div><h1>多模态个人知识库</h1><p>资料有版本 · 回答有依据 · 检索可复核</p></div><span id="mode" class="tag">载入配置…</span></header>
+<main>
+<aside class="panel">
+<h2>资料管理</h2><label>知识库 ID</label><div class="row"><input id="kb" value="default"><button id="refresh" class="secondary">切换</button></div>
+<label>上传 PDF、Markdown 或图片</label><input id="files" type="file" accept=".pdf,.md,.png,.jpg,.jpeg" multiple>
+<div class="row"><button id="upload">上传并建立索引</button><button id="demo" class="secondary">载入原创示例</button></div>
+<div id="notice" class="status"></div><div id="docs"></div>
+<details><summary>固定示例集评测</summary><div class="row"><button id="evaluate" class="secondary">运行四组检索对照</button></div><pre id="metrics">载入 demo 资料后运行。标签对应原创示例资料。</pre></details>
+<p class="muted">默认 TF-IDF 是词汇统计基线。语义 Embedding、神经重排、VLM 与生成模型可独立配置。资料更新会切换知识库版本。</p>
+</aside>
+<section class="panel">
+<h2>知识库问答</h2><textarea id="question" rows="3" placeholder="例如：Atlas A1 的保修期是多久？"></textarea>
+<div class="row"><button id="ask">检索并回答</button><button id="clear" class="secondary">新会话</button></div>
+<div id="tags"></div><div id="answer">上传资料或载入示例后开始提问。</div>
+<h2 style="margin-top:24px">引用与原文</h2><div id="evidence"></div>
+<details><summary>检索过程与耗时</summary><pre id="trace">暂无记录</pre></details>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);let session=crypto.randomUUID();
+async function api(url,options){const r=await fetch(url,options);const d=await r.json();if(!r.ok)throw Error(d.detail||'请求失败');return d}
+const kb=()=>encodeURIComponent($('kb').value);
+function notice(text){$('notice').textContent=text}
+async function refresh(){const data=await api('/api/documents?kb='+kb());$('docs').replaceChildren();
+  for(const doc of data.documents){const node=document.createElement('div');node.className='doc';
+    const title=document.createElement('strong');title.textContent=doc.source;node.append(title);
+    const meta=document.createElement('div');meta.className='muted';meta.textContent=doc.chunk_count+' 个内容块 · 版本 '+doc.version.slice(0,8);node.append(meta);
+    const status=document.createElement('div');status.className='muted';status.textContent=JSON.stringify(doc.parse_status);node.append(status);
+    const del=document.createElement('button');del.className='danger';del.textContent='删除';del.onclick=async()=>{try{await api('/api/documents/'+doc.id+'?kb='+kb(),{method:'DELETE'});await refresh()}catch(e){notice(e.message)}};node.append(del);$('docs').append(node)}
+  notice('当前版本 '+data.epoch+' · '+data.documents.length+' 份资料')}
+$('refresh').onclick=()=>refresh().catch(e=>notice(e.message));
+$('upload').onclick=async()=>{const button=$('upload');button.disabled=true;try{for(const file of $('files').files){const form=new FormData();form.append('file',file);notice('正在解析 '+file.name);await api('/api/documents?kb='+kb(),{method:'POST',body:form})}await refresh()}catch(e){notice(e.message)}finally{button.disabled=false}};
+$('demo').onclick=async()=>{$('demo').disabled=true;notice('正在生成并解析示例，首次 OCR 初始化可能需要等待…');try{await api('/api/demo',{method:'POST'});$('kb').value='demo';await refresh()}catch(e){notice(e.message)}finally{$('demo').disabled=false}};
+$('clear').onclick=()=>{session=crypto.randomUUID();$('answer').textContent='已开始新会话。';$('evidence').replaceChildren()};
+$('evaluate').onclick=async()=>{$('evaluate').disabled=true;try{const data=await api('/api/evaluate?kb='+kb(),{method:'POST'});$('metrics').textContent=JSON.stringify(data,null,2)}catch(e){$('metrics').textContent=e.message}finally{$('evaluate').disabled=false}};
+function render(data){$('tags').replaceChildren();for(const value of [data.mode,'路由 '+data.route,'版本 '+data.epoch,data.cache_hit?'缓存命中':'新查询']){const tag=document.createElement('span');tag.className='tag';tag.textContent=value;$('tags').append(tag)}
+  $('answer').textContent=data.answer;$('trace').textContent=JSON.stringify(data.trace,null,2);$('evidence').replaceChildren();
+  for(const item of data.evidence){const chunk=item.chunk;const node=document.createElement('div');node.className='evidence';
+    const link=document.createElement('a');link.target='_blank';link.rel='noopener';link.href='/api/documents/'+chunk.document_id+'/original?kb='+kb()+(chunk.page?'#page='+chunk.page:'');
+    link.textContent='['+item.evidence_id+'] '+chunk.source+(chunk.page?' · 第 '+chunk.page+' 页':'')+(chunk.heading?' · '+chunk.heading:'');node.append(link);
+    const p=document.createElement('p');p.textContent=chunk.text;node.append(p);
+    if(chunk.image_id){const img=document.createElement('img');img.src='/api/assets/'+chunk.image_id;img.alt='引用的原始图片';node.append(img)}
+    const meta=document.createElement('div');meta.className='muted';meta.textContent=chunk.kind+' · '+item.channels.join(' + ')+(chunk.line_start?' · 行 '+chunk.line_start+'–'+chunk.line_end:'');node.append(meta);$('evidence').append(node)}}
+$('ask').onclick=async()=>{$('ask').disabled=true;$('answer').textContent='正在检索并核查引用…';try{const data=await api('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:$('question').value,kb:$('kb').value,session})});render(data)}catch(e){$('answer').textContent=e.message}finally{$('ask').disabled=false}};
+api('/health').then(d=>{$('mode').textContent=d.embedding+' / '+d.generator+' / VLM '+d.vlm}).catch(e=>notice(e.message));refresh().catch(e=>notice(e.message));
+</script>
+</body>
+</html>

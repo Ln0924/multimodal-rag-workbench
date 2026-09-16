@@ -1,0 +1,8 @@
+{"question":"Atlas A1 的保修期是多久？","relevant_sources":["atlas.md"],"reference":"Atlas A1 的保修期为 24 个月。"}
+{"question":"Atlas A2 的额定功率是多少？","relevant_sources":["atlas.md"],"reference":"Atlas A2 的额定功率为 100W。"}
+{"question":"哪些情况不属于免费保修？","relevant_sources":["atlas.md"],"reference":"人为进水或未经授权拆卸不属于免费保修范围。"}
+{"question":"BM25 适合匹配什么内容？","relevant_sources":["retrieval.md"],"reference":"型号、术语和代码符号的精确匹配。"}
+{"question":"RRF 为什么适合混合检索？","relevant_sources":["retrieval.md"],"reference":"根据排名融合，避免直接混合尺度不同的原始分数。"}
+{"question":"资料修改后旧检索缓存如何处理？","relevant_sources":["retrieval.md"],"reference":"知识库版本变化后旧检索缓存失效。"}
+{"question":"Atlas A1 firmware update","relevant_sources":["maintenance.png","scanned-maintenance.pdf"],"reference":"Connect USB-C, open settings, select firmware update."}
+{"question":"Atlas A1 specification warranty","relevant_sources":["atlas-spec.pdf"],"reference":"Warranty: 24 months."}
